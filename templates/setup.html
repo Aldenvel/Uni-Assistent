@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent – Ordner auswählen</title>
+    <script>
+        function ordnerWaehlen() {
+            const status = document.getElementById("auswahlStatus");
+            status.innerText = "Warte auf Auswahl des Ordners…";
+
+            fetch("/waehle_ordner")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.pfad) {
+                        document.getElementById("ordnerInput").value = data.pfad;
+                        status.innerText = "Ordner ausgewählt: " + data.pfad;
+                    } else {
+                        status.innerText = "Ordnerauswahl abgebrochen.";
+                    }
+                })
+                .catch(() => {
+                    status.innerText = "Fehler bei der Ordnerauswahl.";
+                });
+        }
+    </script>
+</head>
+<body>
+    <h1>Wähle deinen Uni-Ordner</h1>
+    <form method="POST">
+        <label for="ordnerInput">Pfad zum Ordner:</label><br>
+        <input type="text" name="ordner" id="ordnerInput" required style="width: 400px;"><br><br>
+
+        <button type="button" onclick="ordnerWaehlen()">Ordner auswählen</button>
+        <button type="submit">Speichern</button>
+
+        <!-- Statusausgabe für Screenreader -->
+        <p id="auswahlStatus" role="status" aria-live="polite" style="margin-top: 1em;"></p>
+    </form>
+
+    {% if fehler %}
+        <p style="color:red;">{{ fehler }}</p>
+    {% endif %}
+</body>
+</html>
+<!--
+    Diese HTML-Vorlage ist für die Auswahl eines Ordners in einer Webanwendung gedacht.
+    Sie enthält ein Formular, das es dem Benutzer ermöglicht, einen Ordner auszuwählen und den Pfad zu speichern.
+    Die Seite verwendet JavaScript, um eine asynchrone Anfrage an den Server zu senden, um den Ordner auszuwählen.

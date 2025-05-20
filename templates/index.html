@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni- Assistent - Startseite</title>
+</head>
+<body>
+    <header>
+        <nav> <a href="{{ url_for('einstellungen') }}">Einstellungen</a>
+        </nav>
+    </header>
+
+    <h1>Fach auswählen</h1>
+    <ul>
+        {% for fach in fächer %}
+        <li><a href="{{ url_for('fach_menue', fach=fach) }}">{{ fach }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

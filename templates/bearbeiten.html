@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent - Frage bearbeiten – {{ fach }}</title>
+</head>
+<body>
+    <h1>Frage bearbeiten – Fach: {{ fach }}</h1>
+
+    <form method="POST">
+        <label for="fragetyp">Fragetyp:</label>
+        <select id="fragetyp" name="fragetyp" required>
+            <option value="freitext" {% if eintrag.fragetyp == "freitext" %}selected{% endif %}>Freitext</option>
+            <option value="wahr_falsch" {% if eintrag.fragetyp == "wahr_falsch" %}selected{% endif %}>Wahr/Falsch</option>
+            <option value="multiple_choice" {% if eintrag.fragetyp == "multiple_choice" %}selected{% endif %}>Multiple Choice</option>
+        </select>
+
+        <br><br>
+        <label for="frage">Frage:</label><br>
+        <textarea name="frage" rows="3" required>{{ eintrag.frage }}</textarea>
+
+        <br><br>
+        <label for="muster">Musterantwort:</label><br>
+        <textarea name="muster" rows="3" required>{{ eintrag.musterantwort }}</textarea>
+
+        <br><br>
+        <button type="submit">Änderung speichern</button>
+    </form>
+
+    <form action="{{ url_for('editor', fach=fach) }}">
+        <button type="submit">Zurück zum Editor</button>
+    </form>
+</body>
+</html>

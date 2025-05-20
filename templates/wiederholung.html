@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent - Wiederholung – {{ fach }}</title>
+</head>
+<body>
+    <h1>Wiederholung – {{ fach }}</h1>
+
+    {% if abgeschlossen %}
+        <p>🎉 Keine fälligen Wiederholungsfragen heute.</p>
+        <a href="{{ url_for('index') }}">Zurück zur Startseite</a>
+    {% elif beantwortet %}
+        <p><strong>Frage:</strong> {{ frage }}</p>
+        <p><strong>Deine Antwort:</strong> {{ antwort }}</p>
+        <p><strong>Feedback:</strong> {{ feedback }}</p>
+        {% if muster %}
+            <p><strong>Musterlösung:</strong> {{ muster }}</p>
+        {% endif %}
+        <a href="{{ url_for('wiederholung', fach=fach) }}">Nächste Wiederholungsfrage</a>
+        <br>
+        <a href="{{ url_for('index') }}">Zurück zur Startseite</a>
+    {% else %}
+        <form method="POST">
+            <p>{{ frage }}</p>
+            <input type="hidden" name="frage" value="{{ frage }}">
+            <input type="hidden" name="typ" value="{{ typ }}">
+            <input type="hidden" name="muster" value="{{ muster }}">
+            <input type="text" name="antwort" placeholder="Deine Antwort" style="width: 300px;">
+            <button type="submit">Antwort absenden</button>
+        </form>
+    {% endif %}
+</body>
+</html>

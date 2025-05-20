@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent - Eigene Frage hinzufügen – {{ fach }}</title>
+    <script>
+        function zeigeTypfelder() {
+            const typ = document.getElementById("fragetyp").value;
+            document.getElementById("freitext_felder").style.display = (typ === "freitext") ? "block" : "none";
+            document.getElementById("wahr_falsch_felder").style.display = (typ === "wahr_falsch") ? "block" : "none";
+            document.getElementById("multiple_choice_felder").style.display = (typ === "multiple_choice") ? "block" : "none";
+        }
+    </script>
+</head>
+<body>
+    <h1>Eigene Frage hinzufügen – {{ fach }}</h1>
+
+    {% if erfolg %}
+        <p role="status" style="color:green;"><strong>Frage wurde gespeichert!</strong></p>
+    {% endif %}
+
+    <form method="POST" aria-labelledby="form-titel">
+        <h2 id="form-titel">Fragetyp und Eingabe</h2>
+
+        <label for="fragetyp">Fragetyp wählen:</label>
+        <select id="fragetyp" name="fragetyp" required onchange="zeigeTypfelder()">
+            <option value="freitext">Freitext</option>
+            <option value="wahr_falsch">Wahr / Falsch</option>
+            <option value="multiple_choice">Multiple Choice</option>
+        </select>
+
+        <!-- Freitext -->
+        <fieldset id="freitext_felder">
+            <legend>Freitext-Frage</legend>
+            <label for="frage_freitext">Frage:</label>
+            <textarea id="frage_freitext" name="frage" rows="3" required></textarea>
+
+            <label for="muster_freitext">Musterantwort:</label>
+            <textarea id="muster_freitext" name="muster" rows="3" required></textarea>
+        </fieldset>
+
+        <!-- Wahr/Falsch -->
+        <fieldset id="wahr_falsch_felder" style="display: none;">
+            <legend>Wahr/Falsch-Aussage</legend>
+            <label for="frage_wf">Aussage:</label>
+            <textarea id="frage_wf" name="frage" rows="2" required></textarea>
+
+            <label for="muster_wf">Richtig oder falsch?</label>
+            <select id="muster_wf" name="muster" required>
+                <option value="wahr">Wahr</option>
+                <option value="falsch">Falsch</option>
+            </select>
+        </fieldset>
+
+        <!-- Multiple Choice -->
+        <fieldset id="multiple_choice_felder" style="display: none;">
+            <legend>Multiple Choice Frage</legend>
+
+            <label for="frage_mc">Frage:</label>
+            <textarea id="frage_mc" name="frage" rows="2" required></textarea>
+
+            <label for="A">Antwort A:</label>
+            <input id="A" name="A" required>
+
+            <label for="B">Antwort B:</label>
+            <input id="B" name="B" required>
+
+            <label for="C">Antwort C:</label>
+            <input id="C" name="C" required>
+
+            <label for="D">Antwort D:</label>
+            <input id="D" name="D" required>
+
+            <label for="richtig">Richtige Antwort:</label>
+            <select id="richtig" name="richtig" required>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+            </select>
+        </fieldset>
+
+        <br>
+        <button type="submit">Frage speichern</button>
+    </form>
+
+    <form action="{{ url_for('fach_menue', fach=fach) }}">
+        <button type="submit">Zurück zum Fachmenü</button>
+    </form>
+    <hr>
+<h2>Bestehende Fragen</h2>
+
+{% if fragen %}
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Nr.</th>
+                <th>Frage</th>
+                <th>Antwort</th>
+                <th>Typ</th>
+                <th>Bearbeiten</th>
+                <th>Löschen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for eintrag in fragen %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ eintrag.frage }}</td>
+                <td>{{ eintrag.muster }}</td>
+                <td>{{ eintrag.typ }}</td>
+                <td><a href="{{ url_for('bearbeiten_frage', fach=fach, id=eintrag.id) }}">✏️</a></td>
+                <td><form action="{{ url_for('loesche_frage', fach=fach, id=eintrag.id) }}" method="post" style="display:inline;">
+    <button type="submit" aria-label="Frage {{ loop.index }} löschen">🗑️</button>
+</form>
+</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Noch keine Fragen vorhanden.</p>
+{% endif %}
+
+</body>
+</html>

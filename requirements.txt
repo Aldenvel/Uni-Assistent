@@ -1,0 +1,10 @@
+flask
+sentence-transformers
+PyMuPDF
+python-docx
+python-pptx
+beautifulsoup4
+lxml
+ebooklib
+ollama
+faiss-cpu

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent – Quiz ({{ fach }})</title>
+</head>
+<body>
+    <header>
+        <h1>Quiz – Fach: {{ fach }}</h1>
+    </header>
+
+    <main>
+        {% if beantwortet %}
+            <section aria-labelledby="frage-label">
+                <h2 id="frage-label">Frage</h2>
+                <p>{{ frage }}</p>
+            </section>
+
+            <section aria-labelledby="antwort-label">
+                <h2 id="antwort-label">Deine Antwort</h2>
+                <p>{{ antwort }}</p>
+            </section>
+
+            <section aria-labelledby="feedback-label">
+                <h2 id="feedback-label">Feedback</h2>
+                <p><strong>{{ feedback }}</strong></p>
+            </section>
+
+            {% if muster %}
+                <section aria-labelledby="muster-label">
+                    <h3 id="muster-label">Musterlösung</h3>
+                    <p>{{ muster }}</p>
+                </section>
+            {% endif %}
+
+            {% if erwartet %}
+                <section>
+                    <h3>Erwartete Begriffe</h3>
+                    <ul>
+                        {% for begriff in erwartet %}
+                            <li>{{ begriff }}</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            {% if gefunden %}
+                <section>
+                    <h3>Gefundene Begriffe</h3>
+                    <ul>
+                        {% for wort in gefunden %}
+                            <li>{{ wort }}</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+{% if muster %}
+    <section aria-labelledby="muster-label">
+        <h3 id="muster-label">Musterlösung</h3>
+        <p>{{ muster }}</p>
+    </section>
+{% endif %}
+
+{% if erwartet %}
+    <section>
+        <h3>Erwartete Begriffe</h3>
+        <ul>
+            {% for begriff in erwartet %}
+                <li>{{ begriff }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}
+
+{% if gefunden %}
+    <section>
+        <h3>Gefundene Begriffe</h3>
+        <ul>
+            {% for wort in gefunden %}
+                <li>{{ wort }}</li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}
+
+{% if quellen %}
+    <section aria-labelledby="quellen-label">
+        <h3 id="quellen-label">Quellen</h3>
+        <ul>
+            {% for pfad in quellen %}
+                <li>
+                    <a href="file://{{ pfad | replace('\\', '/') }}" target="_blank">
+                        {{ pfad.split('/')[-1] }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}
+
+            <nav aria-label="Quiz-Navigation">
+                <form action="{{ url_for('quiz', fach=fach) }}">
+                    <button type="submit">Nächste Frage</button>
+                </form>
+                <form action="{{ url_for('index') }}">
+                    <button type="submit">Zurück zur Startseite</button>
+                </form>
+            </nav>
+
+        {% else %}
+            <form method="POST" aria-labelledby="quiz-form-label">
+                <h2 id="quiz-form-label">Beantworte folgende Frage:</h2>
+
+                <p>{{ frage }}</p>
+
+                <label for="antwort">Deine Antwort:</label><br>
+                <input type="text" id="antwort" name="antwort" style="width: 300px;" required><br><br>
+
+                <input type="hidden" name="frage" value="{{ frage }}">
+                <input type="hidden" name="typ" value="{{ typ }}">
+                <input type="hidden" name="muster" value="{{ muster }}">
+
+                <button type="submit">Antwort absenden</button>
+            </form>
+
+            <form action="{{ url_for('index') }}">
+                <button type="submit">Zurück zur Startseite</button>
+            </form>
+        {% endif %}
+    </main>
+</body>
+</html>

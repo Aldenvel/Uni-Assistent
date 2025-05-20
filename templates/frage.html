@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent - Eigene Frage stellen – {{ fach }}</title>
+</head>
+<body>
+    <h1>Frage stellen – Fach: {{ fach }}</h1>
+
+    <form method="POST">
+        <label for="frage">Was möchtest du wissen?</label><br>
+        <textarea id="frage" name="frage" rows="4" cols="60" required></textarea><br><br>
+        <button type="submit">Frage senden</button>
+    </form>
+
+    {% if antwort is not none %}
+        <hr>
+        <h2>Antwort</h2>
+        <p>{{ antwort }}</p>
+
+        {% if quellen %}
+            <section aria-labelledby="quellen-label">
+                <h3 id="quellen-label">Verwendete Quellen</h3>
+                <ul>
+                    {% for pfad in quellen %}
+                        <li>
+                            <a href="file://{{ pfad | replace('\\', '/') }}" target="_blank">
+                                {{ pfad.split('/')[-1] }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+    {% endif %}
+
+    {% if antwort is none and request.method == 'POST' %}
+        <p id="ladeanzeige" role="status" aria-live="polite" style="color:blue;">
+            Bitte warten, deine Frage wird verarbeitet ...
+        </p>
+    {% endif %}
+
+    <form action="{{ url_for('fach_menue', fach=fach) }}">
+        <button type="submit">Zurück zum Fachmenü</button>
+    </form>
+
+</body>
+</html>

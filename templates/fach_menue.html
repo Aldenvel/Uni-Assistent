@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent - Fachmenü – {{ fach }}</title>
+</head>
+<body>
+    <h1>Fach: {{ fach }}</h1>
+    <p>Was möchtest du tun?</p>
+
+    <ul>
+        <li><a href="{{ url_for('quiz', fach=fach) }}">Neue Quizfrage</a></li>
+        <li><a href="{{ url_for('wiederholung', fach=fach) }}">Wiederholungsfragen</a></li>
+        <li><a href="{{ url_for('frage_stellen', fach=fach) }}">Eigene Frage stellen</a></li>
+        <li><a href="{{ url_for('editor', fach=fach) }}">Eigene Fragen bearbeiten / hinzufügen</a></li>
+    </ul>
+
+    <form action="{{ url_for('index') }}">
+        <button type="submit">Zurück zur Startseite</button>
+    </form>
+</body>
+</html>
