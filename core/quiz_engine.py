@@ -1,4 +1,3 @@
-from core.rag_engine import texte_in_chunks_aufteilen, finde_relevante_chunks
 from core.ollama_interface import frage_an_modell_stellen
 import random
 import re
@@ -6,6 +5,42 @@ import os
 import csv
 from datetime import datetime
 from datetime import timedelta
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Modell lokal für Quizfragen verwenden
+embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+def texte_in_chunks_aufteilen(texte, chunk_size=500):
+    chunks = []
+    for eintrag in texte:
+        inhalt = eintrag["text"]
+        quelle = eintrag["quelle"]
+        absätze = inhalt.split('\n\n')
+        current = ""
+        for absatz in absätze:
+            if len(current) + len(absatz) < chunk_size:
+                current += absatz + "\n\n"
+            else:
+                chunks.append({
+                    "text": current.strip(),
+                    "quelle": quelle
+                })
+                current = absatz + "\n\n"
+        if current.strip():
+            chunks.append({
+                "text": current.strip(),
+                "quelle": quelle
+            })
+    return chunks
+
+def finde_relevante_chunks(frage, chunks, top_k=3):
+    frage_vec = embedding_model.encode([frage])
+    chunk_vecs = embedding_model.encode([c["text"] for c in chunks])
+    ähnlichkeit = cosine_similarity(frage_vec, chunk_vecs)[0]
+    top_indices = ähnlichkeit.argsort()[::-1][:top_k]
+    relevante = [chunks[i] for i in top_indices]
+    return relevante
 
 def stelle_lernstand_datei_sicher(fach):
     ordner = "data/lernstand"
