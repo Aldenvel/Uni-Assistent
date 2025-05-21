@@ -14,6 +14,8 @@ from core.quiz_engine import (
     speichere_frage_und_antwort,
     stelle_lernstand_datei_sicher
 )
+import json
+
 
 app = Flask(__name__)
 app.config["BASIS_ORDNER"] = lade_benutzerpfad()
@@ -194,7 +196,7 @@ def frage_stellen(fach):
 
     if request.method == "POST":
         frage = request.form["frage"]
-        relevante_chunks = frage_beantworten(frage, texte)
+        relevante_chunks = frage_beantworten(frage, texte, fach)
 
         if not relevante_chunks:
             antwort = "Es konnten keine passenden Informationen in deinen Dokumenten gefunden werden."
@@ -347,6 +349,51 @@ def index():
     if basis_ordner and os.path.isdir(basis_ordner):
         fächer = [f for f in os.listdir(basis_ordner) if os.path.isdir(os.path.join(basis_ordner, f))]
     return render_template("index.html", fächer=fächer)
+
+@app.route("/cache/<fach>")
+def cache_verwaltung(fach):
+    cache_ordner = os.path.join("data", "cache")
+    gecachte_dateien = []
+    fehlerhafte_dateien = []
+
+    # Alle .faiss, .pkl und .json Dateien auflisten
+    if os.path.exists(cache_ordner):
+        for dateiname in os.listdir(cache_ordner):
+            if dateiname.startswith(fach):
+                pfad = os.path.join(cache_ordner, dateiname)
+                if dateiname.startswith(f"fehler_{fach}"):
+                    with open(pfad, encoding="utf-8") as f:
+                        try:
+                            fehlerhafte_dateien = json.load(f)
+                        except Exception as e:
+                            fehlerhafte_dateien = [{"datei": pfad, "fehler": f"Fehler beim Parsen: {e}"}]
+                else:
+                    gecachte_dateien.append(dateiname)
+
+    return render_template("cache_verwaltung.html",
+                           fach=fach,
+                           gecachte_dateien=gecachte_dateien,
+                           fehlerhafte_dateien=fehlerhafte_dateien)
+
+@app.route("/cache/<fach>/loeschen", methods=["POST"])
+def cache_dateien_loeschen(fach):
+    dateien = request.form.getlist("dateien")
+    cache_ordner = os.path.join("data", "cache")
+    for datei in dateien:
+        pfad = os.path.join(cache_ordner, datei)
+        if os.path.exists(pfad):
+            os.remove(pfad)
+    return redirect(url_for("cache_verwaltung", fach=fach))
+
+@app.route("/cache/<fach>/reset", methods=["POST"])
+def cache_komplett_leeren(fach):
+    cache_ordner = os.path.join("data", "cache")
+    for dateiname in os.listdir(cache_ordner):
+        if dateiname.startswith(fach):
+            pfad = os.path.join(cache_ordner, dateiname)
+            os.remove(pfad)
+    return redirect(url_for("cache_verwaltung", fach=fach))
+
 
 # App starten
 if __name__ == "__main__":

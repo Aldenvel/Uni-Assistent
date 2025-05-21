@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Uni-Assistent - Cache-Verwaltung – {{ fach }}</title>
+</head>
+<body>
+    <h1>Cache-Verwaltung für Fach: {{ fach }}</h1>
+
+    <h2>Gecachte Dateien</h2>
+    {% if gecachte_dateien %}
+        <form method="POST" action="{{ url_for('cache_dateien_loeschen', fach=fach) }}">
+            <ul>
+                {% for datei in gecachte_dateien %}
+                    <li>
+                        <label>
+                            <input type="checkbox" name="dateien" value="{{ datei }}">
+                            {{ datei }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+            <button type="submit" onclick="return confirm('Ausgewählte Cache-Dateien wirklich löschen?')">Ausgewählte löschen</button>
+        </form>
+    {% else %}
+        <p>Keine Cache-Dateien vorhanden.</p>
+    {% endif %}
+
+    <h2>Fehlerhafte Dateien</h2>
+    {% if fehlerhafte_dateien %}
+        <ul>
+            {% for eintrag in fehlerhafte_dateien %}
+                <li>
+                    <strong>{{ eintrag.datei }}</strong><br>
+                    Fehler: {{ eintrag.fehler }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Keine Fehler beim Einlesen festgestellt.</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('cache_komplett_leeren', fach=fach) }}">
+        <button type="submit" onclick="return confirm('Den gesamten Cache wirklich löschen?')">Gesamten Cache löschen</button>
+    </form>
+
+    <br>
+    <form action="{{ url_for('frage_stellen', fach=fach) }}">
+        <button type="submit">Zurück zur Frageseite</button>
+    </form>
+</body>
+</html>

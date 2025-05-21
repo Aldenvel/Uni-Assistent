@@ -1,0 +1,19 @@
+# Ignoriere virtuelle Umgebung
+venv/
+
+# Python-Cache-Dateien
+__pycache__/
+*.py[cod]
+
+# IDE und Editor-Konfigdateien
+.vscode/
+.idea/
+
+# Logdateien und Umgebungen
+*.log
+.env
+*.sqlite3
+
+# Mac- & Windows-spezifisches
+.DS_Store
+Thumbs.db

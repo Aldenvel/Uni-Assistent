@@ -1,14 +1,10 @@
 from core.vektor_suche import baue_index_und_texte, finde_relevante_texte
-
-def frage_beantworten(frage, texte):
-    """
-    Erzeugt einen FAISS-Index aus den gegebenen Texten
-    und liefert die relevantesten Abschnitte zur gestellten Frage zurück.
-    """
-    if not texte:
-        return []
-
-    index, mapping = baue_index_und_texte(texte)
+# Diese Funktion beantwortet eine Frage, indem sie relevante Textstellen aus einem Dokumenten-Array abruft.
+def frage_beantworten(frage, texte, fach):
+    # Nutze FAISS-Index + Caching pro Fach
+    index, mapping = baue_index_und_texte(texte, fach=fach)
+#    # Frage in ein Embedding umwandeln
+    # Relevante Textstellen finden
     relevante_chunks = finde_relevante_texte(frage, index, mapping)
-
+#    # Extrahiere den Text aus den relevanten Textstellen
     return relevante_chunks

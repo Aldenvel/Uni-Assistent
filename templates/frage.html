@@ -43,6 +43,10 @@
     <form action="{{ url_for('fach_menue', fach=fach) }}">
         <button type="submit">Zurück zum Fachmenü</button>
     </form>
+<hr>
+<p>
+    <a href="{{ url_for('cache_verwaltung', fach=fach) }}">Cache-Verwaltung für {{ fach }}</a>
+</p>
 
 </body>
 </html>
