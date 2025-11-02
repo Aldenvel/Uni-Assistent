@@ -1,19 +1,28 @@
-# Ignoriere virtuelle Umgebung
+# Virtuelle Umgebung
 venv/
 
 # Python-Cache-Dateien
 __pycache__/
 *.py[cod]
 
-# IDE und Editor-Konfigdateien
+# IDE & Editor
 .vscode/
 .idea/
 
-# Logdateien und Umgebungen
+# Logdateien & Umgebungen
 *.log
 .env
 *.sqlite3
 
-# Mac- & Windows-spezifisches
+# OS-spezifisches
 .DS_Store
 Thumbs.db
+
+# Projektinterne Cache-/Lernstände
+data/cache/
+data/lernstand/
+
+# Vektordateien, FAISS-Indexe, Pickles etc.
+*.faiss
+*.pkl
+*.json

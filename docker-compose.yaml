@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Daten-Persistenz: Montiere Data-Ordner als Volume
+      - ./Data:/app/Data
+    environment:
+      - FLASK_APP=app.py
+      # Setze auf 'production' in echter Produktivumgebung
+      - FLASK_ENV=development
+    restart: unless-stopped
