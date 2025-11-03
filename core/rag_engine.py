@@ -1,10 +1,136 @@
-from core.vektor_suche import baue_index_und_texte, finde_relevante_texte
-# Diese Funktion beantwortet eine Frage, indem sie relevante Textstellen aus einem Dokumenten-Array abruft.
-def frage_beantworten(frage, texte, fach):
-    # Nutze FAISS-Index + Caching pro Fach
-    index, mapping = baue_index_und_texte(texte, fach=fach)
-#    # Frage in ein Embedding umwandeln
-    # Relevante Textstellen finden
-    relevante_chunks = finde_relevante_texte(frage, index, mapping)
-#    # Extrahiere den Text aus den relevanten Textstellen
-    return relevante_chunks
+# core/rag_engine.py
+import re
+from typing import List, Tuple
+from core.vektor_suche import (
+    baue_index_und_texte,
+    finde_relevante_texte_mit_scores,
+)
+from core.ollama_interface import frage_an_modell_stellen  
+
+STANDARD_KEINE_INFO = (
+    "Diese Frage kann ich nicht beantworten, da hierzu keine Informationen in den Unterlagen zu finden waren."
+)
+
+# sehr kleine Stopwortliste (de+en) – bewusst knapp gehalten
+_STOP = {
+    "der","die","das","und","oder","ein","eine","einer","einem","eines","mit","ohne","zu","zum","zur",
+    "von","im","in","am","an","auf","für","ist","sind","war","waren","wird","werden","also","auch",
+    "the","a","an","and","or","of","to","in","on","for","is","are","was","were","be","been","being"
+}
+
+def _tokens(s: str) -> List[str]:
+    return [t for t in re.split(r"[^a-zA-ZäöüÄÖÜß0-9]+", (s or "").lower()) if t and t not in _STOP]
+
+def _content_tokens(s: str, min_len: int = 5) -> List[str]:
+    return [t for t in _tokens(s) if len(t) >= min_len]
+
+def _token_overlap(a: str, b: str) -> Tuple[int, set]:
+    ta, tb = set(_tokens(a)), set(_tokens(b))
+    inter = ta & tb
+    return len(inter), inter
+
+def _filter_kontext(kandidaten, frage, min_sim_hart=0.75, min_sim_weich=0.55, min_overlap=3, top_k_final=3):
+    """
+    Harte Vorselektion:
+    - Top1 >= min_sim_hart -> akzeptieren
+    - sonst: Top1 >= min_sim_weich UND token-overlap >= min_overlap
+    Danach bis zu top_k_final Chunks, die dieselbe Logik erfüllen.
+    """
+    if not kandidaten:
+        return [], []
+
+    top1 = kandidaten[0]
+    top1_ok = (top1["score"] >= min_sim_hart)
+    if not top1_ok:
+        ovl_count, _ = _token_overlap(frage, top1["text"])
+        top1_ok = (top1["score"] >= min_sim_weich and ovl_count >= min_overlap)
+    if not top1_ok:
+        return [], []
+
+    kontext, quellen = [], []
+    for item in kandidaten[:top_k_final]:
+        if item["score"] >= min_sim_hart:
+            kontext.append(item["text"])
+            quellen.append(item["quelle"])
+        else:
+            ovl_count, _ = _token_overlap(frage, item["text"])
+            if item["score"] >= min_sim_weich and ovl_count >= min_overlap:
+                kontext.append(item["text"])
+                quellen.append(item["quelle"])
+
+    if not kontext:
+        return [], []
+    quellen = list(dict.fromkeys(quellen))
+    return kontext, quellen
+
+def _validate_answer_against_context(answer: str, kontext: List[str],
+                                     max_out_of_context_ratio: float = 0.35,
+                                     min_required_hits: int = 3) -> bool:
+    """
+    Strikte Nachvalidierung:
+    - Zähle 'content tokens' (>=5 Zeichen) in der Antwort.
+    - Erzeuge die Menge aller content tokens aus dem Kontext.
+    - Wenn zu viele Antwort-Token NICHT im Kontext vorkommen -> ungültig.
+    - Außerdem: mind. 'min_required_hits' Treffer müssen im Kontext sein.
+    """
+    if not answer or not kontext:
+        return False
+
+    ans_tokens = _content_tokens(answer)
+    if not ans_tokens:
+        return False
+
+    ctx_tokens = set()
+    for c in kontext:
+        ctx_tokens.update(_content_tokens(c))
+
+    hits = [t for t in ans_tokens if t in ctx_tokens]
+    misses = [t for t in ans_tokens if t not in ctx_tokens]
+
+    # Verhältnis von "Außerhalb-Kontext"-Tokens darf max. X betragen
+    if len(misses) / max(1, len(ans_tokens)) > max_out_of_context_ratio:
+        return False
+
+    # Mindestens N Kontexttreffer notwendig
+    if len(hits) < min_required_hits:
+        return False
+
+    return True
+
+def frage_beantworten(frage, dokumente, fach, modell_name="mistral", top_k=8):
+    """
+    Vollständige RAG-Pipeline:
+    1) Semantisches Ranking (FAISS)
+    2) Harte Vorselektion (Score + Overlap) -> kein Kontext -> Standardtext
+    3) Modellantwort
+    4) Strikte Nachvalidierung -> bei Verstoß -> Standardtext
+    """
+    index, mapping = baue_index_und_texte(dokumente, fach=fach)
+    kandidaten = finde_relevante_texte_mit_scores(frage, index, mapping, top_k=top_k)
+
+    kontext, _ = _filter_kontext(kandidaten, frage)
+    if not kontext:
+        return STANDARD_KEINE_INFO
+
+    answer = frage_an_modell_stellen(frage, kontext, modell_name=modell_name)
+    if not _validate_answer_against_context(answer, kontext):
+        return STANDARD_KEINE_INFO
+
+    return answer
+
+def frage_beantworten_mit_quellen(frage, dokumente, fach, modell_name="mistral", top_k=8):
+    """
+    Wie oben, zusätzlich: Quellenliste zurückgeben.
+    """
+    index, mapping = baue_index_und_texte(dokumente, fach=fach)
+    kandidaten = finde_relevante_texte_mit_scores(frage, index, mapping, top_k=top_k)
+
+    kontext, quellen = _filter_kontext(kandidaten, frage)
+    if not kontext:
+        return STANDARD_KEINE_INFO, []
+
+    answer = frage_an_modell_stellen(frage, kontext, modell_name=modell_name)
+    if not _validate_answer_against_context(answer, kontext):
+        return STANDARD_KEINE_INFO, []
+
+    return answer, quellen

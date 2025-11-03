@@ -8,8 +8,24 @@ services:
     volumes:
       # Daten-Persistenz: Montiere Data-Ordner als Volume
       - ./Data:/app/Data
+      # Uni-Ordner für Dokumente (nur Lesezugriff)
+      - "C:\\Users\\veljk\\Desktop\\Uni:/app/Uni:ro"
     environment:
       - FLASK_APP=app.py
       # Setze auf 'production' in echter Produktivumgebung
       - FLASK_ENV=development
+      - OLLAMA_HOST=ollama
+    depends_on:
+      - ollama
     restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:

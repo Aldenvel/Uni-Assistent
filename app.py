@@ -188,6 +188,10 @@ def wiederholung(fach):
 # Eigene Frage an KI stellen
 @app.route("/frage/<fach>", methods=["GET", "POST"])
 def frage_stellen(fach):
+    """
+    Route zum Stellen eigener Fragen an die KI.
+    Nutzt die vollständige RAG-Pipeline (Retrieval + Antwort + Quellen).
+    """
     pfad = os.path.join(app.config["BASIS_ORDNER"], fach)
     texte = lade_dokumente_aus_ordner(pfad)
 
@@ -196,17 +200,13 @@ def frage_stellen(fach):
 
     if request.method == "POST":
         frage = request.form["frage"]
-        relevante_chunks = frage_beantworten(frage, texte, fach)
 
-        if not relevante_chunks:
-            antwort = "Es konnten keine passenden Informationen in deinen Dokumenten gefunden werden."
-            quellen = []
-        else:
-            kontexttexte = [chunk["text"] for chunk in relevante_chunks]
-            antwort = frage_an_modell_stellen(frage, kontexttexte)
-            quellen = list({chunk["quelle"] for chunk in relevante_chunks})
+        # 🔹 Nutzung der neuen RAG-Funktion mit Quellen
+        from core.rag_engine import frage_beantworten_mit_quellen
+        antwort, quellen = frage_beantworten_mit_quellen(frage, texte, fach)
 
     return render_template("frage.html", fach=fach, antwort=antwort, quellen=quellen)
+
 
 @app.route("/editor/<fach>", methods=["GET", "POST"])
 def editor(fach):

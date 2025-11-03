@@ -62,7 +62,7 @@ def main():
     if modus == "1":
         frage = input("\nWas möchtest du wissen? > ").strip()
         relevante_chunks = frage_beantworten(frage, texte)
-        antwort = frage_an_modell_stellen(frage, relevante_chunks)
+        antwort = frage_beantworten(frage, texte, fach)
         print("\nAntwort:\n")
         print(antwort)
 
