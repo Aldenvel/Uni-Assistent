@@ -14,7 +14,7 @@ COPY app.py /app/app.py
 
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY Data /app/Data
+COPY data /app/data
 COPY static /app/static
 COPY core /app/core
 CMD ["python", "/app/app.py"]

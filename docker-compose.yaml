@@ -7,7 +7,7 @@ services:
       - "5000:5000"
     volumes:
       # Daten-Persistenz: Montiere Data-Ordner als Volume
-      - ./Data:/app/Data
+      - ./data:/app/data
       # Uni-Ordner für Dokumente (nur Lesezugriff)
       - "C:\\Users\\veljk\\Desktop\\Uni:/app/Uni:ro"
     environment:

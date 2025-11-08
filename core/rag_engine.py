@@ -29,9 +29,9 @@ def _token_overlap(a: str, b: str) -> Tuple[int, set]:
     inter = ta & tb
     return len(inter), inter
 
-def _filter_kontext(kandidaten, frage, min_sim_hart=0.75, min_sim_weich=0.55, min_overlap=3, top_k_final=3):
+def _filter_kontext(kandidaten, frage, min_sim_hart=0.45, min_sim_weich=0.25, min_overlap=1, top_k_final=5):
     """
-    Harte Vorselektion:
+    Harte Vorselektion (entschärfte Version):
     - Top1 >= min_sim_hart -> akzeptieren
     - sonst: Top1 >= min_sim_weich UND token-overlap >= min_overlap
     Danach bis zu top_k_final Chunks, die dieselbe Logik erfüllen.
@@ -64,8 +64,8 @@ def _filter_kontext(kandidaten, frage, min_sim_hart=0.75, min_sim_weich=0.55, mi
     return kontext, quellen
 
 def _validate_answer_against_context(answer: str, kontext: List[str],
-                                     max_out_of_context_ratio: float = 0.35,
-                                     min_required_hits: int = 3) -> bool:
+                                     max_out_of_context_ratio: float = 0.6,
+                                     min_required_hits: int = 1) -> bool:
     """
     Strikte Nachvalidierung:
     - Zähle 'content tokens' (>=5 Zeichen) in der Antwort.
@@ -94,7 +94,8 @@ def _validate_answer_against_context(answer: str, kontext: List[str],
     # Mindestens N Kontexttreffer notwendig
     if len(hits) < min_required_hits:
         return False
-
+        print(f"[DEBUG] Validierung: {len(hits)} Hits, {len(misses)} Misses ({len(misses)/max(1,len(ans_tokens)):.2f} außerhalb)")
+#Das ist fürs debuggen nützlich
     return True
 
 def frage_beantworten(frage, dokumente, fach, modell_name="mistral", top_k=8):
@@ -107,30 +108,25 @@ def frage_beantworten(frage, dokumente, fach, modell_name="mistral", top_k=8):
     """
     index, mapping = baue_index_und_texte(dokumente, fach=fach)
     kandidaten = finde_relevante_texte_mit_scores(frage, index, mapping, top_k=top_k)
+    print(f"[DEBUG] Gefundene Kandidaten: {len(kandidaten)}")
+
+    if kandidaten:
+        print(f"[DEBUG] Top-Score: {kandidaten[0]['score']:.3f} – Quelle: {kandidaten[0]['quelle']}")
 
     kontext, _ = _filter_kontext(kandidaten, frage)
+    print(f"[DEBUG] Kontext gefunden: {len(kontext)} Textabschnitte")
+
     if not kontext:
+        print("[DEBUG] Kein Kontext gefunden – breche ab.")
         return STANDARD_KEINE_INFO
 
     answer = frage_an_modell_stellen(frage, kontext, modell_name=modell_name)
+    print(f"[DEBUG] Modellantwort (erste 200 Zeichen): {answer[:200]}")
+
     if not _validate_answer_against_context(answer, kontext):
+        print("[DEBUG] Validierung fehlgeschlagen – gebe Standardantwort zurück.")
         return STANDARD_KEINE_INFO
 
+    print("[DEBUG] Antwort erfolgreich validiert.")
     return answer
 
-def frage_beantworten_mit_quellen(frage, dokumente, fach, modell_name="mistral", top_k=8):
-    """
-    Wie oben, zusätzlich: Quellenliste zurückgeben.
-    """
-    index, mapping = baue_index_und_texte(dokumente, fach=fach)
-    kandidaten = finde_relevante_texte_mit_scores(frage, index, mapping, top_k=top_k)
-
-    kontext, quellen = _filter_kontext(kandidaten, frage)
-    if not kontext:
-        return STANDARD_KEINE_INFO, []
-
-    answer = frage_an_modell_stellen(frage, kontext, modell_name=modell_name)
-    if not _validate_answer_against_context(answer, kontext):
-        return STANDARD_KEINE_INFO, []
-
-    return answer, quellen
