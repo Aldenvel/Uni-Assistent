@@ -5,10 +5,6 @@ Diese Aufgabe besteht aus zwei Teilen:
 1. Inhaltliche Abgabe (Template mit 10 Fragen)  
 2. Technische Umsetzung (AI + Docker + Kubernetes mit zwei Services + Pitch)  
 
-Gruppengrösse ist 1 bis 2 Personen pro Gruppe.
-Gruppen sind per Email an alkurdiz@htw-berlin.de ODER per Moodle einzutragen https://moodle.htw-berlin.de/mod/wiki/view.php?id=2035127.
----
-
 ## Kategorien und Themen  
 
 ### Hinweis zu Daten  
