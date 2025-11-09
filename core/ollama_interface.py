@@ -9,8 +9,6 @@ STANDARD_KEINE_INFO = (
 # Stop-Token: Modell stoppt nach dem ersten Absatz
 _DEF_STOP = ["\n\n"]
 
-# Erlaubte Antwortformate
-_ANSWER_RE = re.compile(r"^\s*ANSWER:\s*(.+)\s*$", re.IGNORECASE | re.DOTALL)
 _NOT_FOUND_RE = re.compile(r"^\s*NOT_FOUND\s*$", re.IGNORECASE)
 
 
@@ -30,10 +28,11 @@ def _build_prompt(frage: str, kontext: str) -> str:
     )
 
 
-def frage_an_modell_stellen(frage, kontext, modell_name="mistral"):
+def frage_an_modell_stellen(frage, kontext, modell_name: str = "mistral"):
     """
-    Stellt eine Frage an das Ollama-Modell mit einem strikt kontrollierten Prompt.
-    Das Modell darf nur auf Basis des Kontexts antworten.
+    Stellt eine Frage an das Ollama-Modell mit einem strikt kontextgebundenen Prompt.
+    Aktuell werden die Antworten nicht mehr auf ein spezielles 'ANSWER:'-Format geprüft,
+    sondern direkt zurückgegeben, solange das Modell nicht explizit 'NOT_FOUND' schreibt.
     """
     if not kontext or all(not k or not k.strip() for k in kontext):
         return STANDARD_KEINE_INFO
@@ -45,16 +44,10 @@ def frage_an_modell_stellen(frage, kontext, modell_name="mistral"):
     prompt = _build_prompt(frage, context_text)
 
     system_prompt = (
-        "SYSTEMANWEISUNG (verpflichtend): "
-        "Du bist ein streng kontextgebundenes Analysemodell. "
-        "Du darfst ausschließlich Informationen aus dem gegebenen Kontext ('AUSZÜGE') verwenden. "
-        "Wenn die gestellte Frage nicht eindeutig durch diese Informationen beantwortet werden kann, "
-        "musst du exakt mit 'NOT_FOUND' antworten. "
-        "Du darfst KEINE eigenen Schlussfolgerungen, Vermutungen oder externes Wissen einbringen. "
-        "Du darfst KEINEN Versuch unternehmen, die Antwort zu erraten oder zu ergänzen. "
-        "Du darfst KEINE allgemeinen Informationen, Interpretationen oder Erklärungen hinzufügen. "
-        "Wenn du unsicher bist oder keine exakte Antwort aus den AUSZÜGEN ableiten kannst, "
-        "antworte mit 'NOT_FOUND'. "
+        "Du bist ein streng kontextgebundener Assistent. "
+        "Du darfst ausschließlich Informationen aus den AUSZÜGEN verwenden. "
+        "Wenn die Frage nicht eindeutig aus den AUSZÜGEN beantwortet werden kann, "
+        "antworte exakt mit NOT_FOUND."
     )
 
     try:
@@ -65,8 +58,8 @@ def frage_an_modell_stellen(frage, kontext, modell_name="mistral"):
                 {"role": "user", "content": prompt},
             ],
             options={
-                "temperature": 0, # kann auch auf 0 gesetzt erden
-                "top_p": 1, # kann auf 1 gesetzt werden 
+                "temperature": 0,
+                "top_p": 1,
                 "top_k": 1,
                 "num_predict": 256,
                 "stop": _DEF_STOP,
@@ -76,15 +69,12 @@ def frage_an_modell_stellen(frage, kontext, modell_name="mistral"):
         text = (response.get("message", {}) or {}).get("content", "") or ""
         text = text.strip()
 
+        # Wenn das Modell explizit 'NOT_FOUND' schreibt → Standardantwort
         if _NOT_FOUND_RE.match(text):
             return STANDARD_KEINE_INFO
 
-        match = _ANSWER_RE.match(text)
-        if match:
-            answer = match.group(1).strip()
-            return answer if answer else STANDARD_KEINE_INFO
-
-        return STANDARD_KEINE_INFO
+        # Ansonsten die Antwort direkt zurückgeben
+        return text if text else STANDARD_KEINE_INFO
 
     except Exception as e:
         return f"Fehler bei der Modellabfrage: {e}"

@@ -1,11 +1,11 @@
-    # core/rag_engine.py
+# core/rag_engine.py
 import re
-from typing import List, Tuple
+from typing import List, Tuple, List as TList
 from core.vektor_suche import (
     baue_index_und_texte,
     finde_relevante_texte_mit_scores,
 )
-from core.ollama_interface import frage_an_modell_stellen  
+from core.ollama_interface import frage_an_modell_stellen
 
 STANDARD_KEINE_INFO = (
     "Diese Frage kann ich nicht beantworten, da hierzu keine Informationen in den Unterlagen zu finden waren."
@@ -18,10 +18,10 @@ _STOP = {
     "the","a","an","and","or","of","to","in","on","for","is","are","was","were","be","been","being"
 }
 
-def _tokens(s: str) -> List[str]:
+def _tokens(s: str) -> TList[str]:
     return [t for t in re.split(r"[^a-zA-ZäöüÄÖÜß0-9]+", (s or "").lower()) if t and t not in _STOP]
 
-def _content_tokens(s: str, min_len: int = 5) -> List[str]:
+def _content_tokens(s: str, min_len: int = 5) -> TList[str]:
     return [t for t in _tokens(s) if len(t) >= min_len]
 
 def _token_overlap(a: str, b: str) -> Tuple[int, set]:
@@ -63,15 +63,11 @@ def _filter_kontext(kandidaten, frage, min_sim_hart=0.45, min_sim_weich=0.25, mi
     quellen = list(dict.fromkeys(quellen))
     return kontext, quellen
 
-def _validate_answer_against_context(answer: str, kontext: List[str],
+def _validate_answer_against_context(answer: str, kontext: TList[str],
                                      max_out_of_context_ratio: float = 0.6,
                                      min_required_hits: int = 1) -> bool:
     """
-    Strikte Nachvalidierung:
-    - Zähle 'content tokens' (>=5 Zeichen) in der Antwort.
-    - Erzeuge die Menge aller content tokens aus dem Kontext.
-    - Wenn zu viele Antwort-Token NICHT im Kontext vorkommen -> ungültig.
-    - Außerdem: mind. 'min_required_hits' Treffer müssen im Kontext sein.
+    Strikte Nachvalidierung (derzeit ungenutzt – kann später wieder aktiviert werden).
     """
     if not answer or not kontext:
         return False
@@ -87,24 +83,20 @@ def _validate_answer_against_context(answer: str, kontext: List[str],
     hits = [t for t in ans_tokens if t in ctx_tokens]
     misses = [t for t in ans_tokens if t not in ctx_tokens]
 
-    # Verhältnis von "Außerhalb-Kontext"-Tokens darf max. X betragen
     if len(misses) / max(1, len(ans_tokens)) > max_out_of_context_ratio:
         return False
 
-    # Mindestens N Kontexttreffer notwendig
     if len(hits) < min_required_hits:
         return False
-        print(f"[DEBUG] Validierung: {len(hits)} Hits, {len(misses)} Misses ({len(misses)/max(1,len(ans_tokens)):.2f} außerhalb)")
-#Das ist fürs debuggen nützlich
+
     return True
 
 def frage_beantworten(frage, dokumente, fach, modell_name="mistral", top_k=8):
     """
-    Vollständige RAG-Pipeline:
+    Vollständige RAG-Pipeline (ohne strikte Nachvalidierung):
     1) Semantisches Ranking (FAISS)
     2) Harte Vorselektion (Score + Overlap) -> kein Kontext -> Standardtext
-    3) Modellantwort
-    4) Strikte Nachvalidierung -> bei Verstoß -> Standardtext
+    3) Modellantwort -> direkt zurückgeben, wenn vorhanden
     """
     index, mapping = baue_index_und_texte(dokumente, fach=fach)
     kandidaten = finde_relevante_texte_mit_scores(frage, index, mapping, top_k=top_k)
@@ -117,16 +109,43 @@ def frage_beantworten(frage, dokumente, fach, modell_name="mistral", top_k=8):
     print(f"[DEBUG] Kontext gefunden: {len(kontext)} Textabschnitte")
 
     if not kontext:
-        print("[DEBUG] Kein Kontext gefunden – breche ab.")
+        print("[DEBUG] Kein Kontext gefunden – gebe Standardantwort zurück.")
         return STANDARD_KEINE_INFO
 
     answer = frage_an_modell_stellen(frage, kontext, modell_name=modell_name)
     print(f"[DEBUG] Modellantwort (erste 200 Zeichen): {answer[:200]}")
 
-    if not _validate_answer_against_context(answer, kontext):
-        print("[DEBUG] Validierung fehlgeschlagen – gebe Standardantwort zurück.")
+    if not answer or not answer.strip():
+        print("[DEBUG] Leere Antwort vom Modell – gebe Standardantwort zurück.")
         return STANDARD_KEINE_INFO
 
-    print("[DEBUG] Antwort erfolgreich validiert.")
+    print("[DEBUG] Antwort ohne Nachvalidierung zurückgegeben.")
     return answer
 
+def frage_beantworten_mit_quellen(frage, dokumente, fach, modell_name="mistral", top_k=8):
+    """
+    Wie oben, zusätzlich: Quellenliste zurückgeben.
+    """
+    index, mapping = baue_index_und_texte(dokumente, fach=fach)
+    kandidaten = finde_relevante_texte_mit_scores(frage, index, mapping, top_k=top_k)
+    print(f"[DEBUG] [mit_quellen] Gefundene Kandidaten: {len(kandidaten)}")
+
+    if kandidaten:
+        print(f"[DEBUG] [mit_quellen] Top-Score: {kandidaten[0]['score']:.3f} – Quelle: {kandidaten[0]['quelle']}")
+
+    kontext, quellen = _filter_kontext(kandidaten, frage)
+    print(f"[DEBUG] [mit_quellen] Kontext gefunden: {len(kontext)} Textabschnitte")
+
+    if not kontext:
+        print("[DEBUG] [mit_quellen] Kein Kontext gefunden – gebe Standardantwort zurück.")
+        return STANDARD_KEINE_INFO, []
+
+    answer = frage_an_modell_stellen(frage, kontext, modell_name=modell_name)
+    print(f"[DEBUG] [mit_quellen] Modellantwort (erste 200 Zeichen): {answer[:200]}")
+
+    if not answer or not answer.strip():
+        print("[DEBUG] [mit_quellen] Leere Antwort vom Modell – gebe Standardantwort zurück.")
+        return STANDARD_KEINE_INFO, []
+
+    print("[DEBUG] [mit_quellen] Antwort ohne Nachvalidierung zurückgegeben.")
+    return answer, quellen
