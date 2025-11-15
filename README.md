@@ -12,7 +12,7 @@ Das Hauptziel des Uni-Assistenten ist es, die Lerneffizienz von Studierenden zu 
 
 Der Uni-Assistent richtet sich primär an Studierende aller Fachrichtungen, die ihre Lernmaterialien digital vorliegen haben. Die Nutzung erfolgt über eine webbasierte Oberfläche: Studierende hinterlegen den Pfad zu Ihren Vorlesungsskripten, PDFs oder Textdokumente hoch und organisieren diese nach Fächern. Anschließend können sie natürlichsprachige Fragen stellen wie „Was ist Docker?" oder „Erkläre den Unterschied zwischen Pods und Deployments in Kubernetes". Das System durchsucht die relevanten Dokumente semantisch, findet die passendsten Textpassagen und generiert eine fundierte Antwort unter Angabe der Quellen. Die barrierefreie Oberfläche mit Screenreader-Unterstützung, Tastaturnavigation und visuellen sowie akustischen Fortschrittsanzeigen ermöglicht auch Studierenden mit Behinderungen eine selbstständige Nutzung.
 
-**Code-Repository:** [GitHub-Link hier einfügen]  
+**Code-Repository:** https://github.com/Aldenvel/Uni-Assistent  
 **Pitch:** [Audio-Link hier einfügen]
 
 ## 4. Entwicklungsstand
