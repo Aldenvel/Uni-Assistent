@@ -25,4 +25,7 @@ data/lernstand/
 # Vektordateien, FAISS-Indexe, Pickles etc.
 *.faiss
 *.pkl
-*.json
+
+# JSON-Dateien ausschließen, aber config.json behalten
+data/*.json
+!data/config.json

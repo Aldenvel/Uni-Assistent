@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: uni-assistent
+data:
+  FLASK_ENV: production
+  MODEL_NAME: mistral
+  # Interner Service-Name von Ollama
+  OLLAMA_URL: http://ollama.uni-assistent.svc.cluster.local:11434

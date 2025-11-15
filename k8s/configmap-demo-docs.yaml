@@ -1,0 +1,232 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-docs
+  namespace: uni-assistent
+data:
+  docker.txt: |
+    Docker - Containerisierung und Virtualisierung
+    
+    Docker ist eine Plattform zur Entwicklung, zum Versand und zur Ausführung von Anwendungen in Containern.
+    Container sind leichtgewichtige, eigenständige, ausführbare Softwarepakete, die alles enthalten, was zum 
+    Ausführen einer Anwendung erforderlich ist: Code, Laufzeit, Systemtools, Bibliotheken und Einstellungen.
+    
+    Hauptkonzepte:
+    - Images: Unveränderliche Vorlagen für Container, definiert durch Dockerfiles
+    - Container: Laufende Instanzen von Images, isoliert vom Host-System
+    - Volumes: Persistente Datenspeicherung außerhalb des Container-Dateisystems
+    - Netzwerke: Kommunikation zwischen Containern und mit der Außenwelt
+    
+    Dockerfile-Beispiel:
+    FROM python:3.12-slim
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install -r requirements.txt
+    COPY . .
+    CMD ["python", "app.py"]
+    
+    Docker Compose ermöglicht die Definition und Ausführung von Multi-Container-Anwendungen.
+    Services werden in einer docker-compose.yaml deklarativ beschrieben, inklusive Volumes,
+    Netzwerken, Umgebungsvariablen und Abhängigkeiten zwischen Services.
+    
+    Sicherheitsaspekte:
+    - Non-root User verwenden (USER directive)
+    - Read-only Dateisysteme wo möglich
+    - Capabilities einschränken (cap_drop)
+    - Security-opt Flags nutzen (no-new-privileges)
+    
+  kubernetes.txt: |
+    Kubernetes - Container-Orchestrierung
+    
+    Kubernetes (K8s) ist ein Open-Source-System zur Automatisierung der Bereitstellung, Skalierung
+    und Verwaltung von containerisierten Anwendungen. Es wurde ursprünglich von Google entwickelt
+    und wird jetzt von der Cloud Native Computing Foundation verwaltet.
+    
+    Kernkomponenten:
+    - Pod: Kleinste deploybare Einheit, enthält einen oder mehrere Container
+    - Deployment: Deklarative Updates für Pods und ReplicaSets
+    - Service: Abstrahiert den Zugriff auf Pods, ermöglicht Load Balancing
+    - ConfigMap: Konfigurationsdaten für Anwendungen
+    - Secret: Sensible Daten wie Passwörter und API-Keys
+    - PersistentVolume (PV) und PersistentVolumeClaim (PVC): Speicherverwaltung
+    
+    Deployment-Beispiel:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: app
+    spec:
+      replicas: 3
+      selector:
+        matchLabels:
+          app: web
+      template:
+        metadata:
+          labels:
+            app: web
+        spec:
+          containers:
+          - name: app
+            image: myapp:latest
+            ports:
+            - containerPort: 8080
+    
+    Vorteile:
+    - Automatische Skalierung (Horizontal Pod Autoscaler)
+    - Self-healing: Automatischer Neustart bei Fehlern
+    - Rolling Updates und Rollbacks
+    - Service Discovery und Load Balancing
+    - Deklarative Konfiguration
+    
+    Namespace: Logische Trennung von Ressourcen innerhalb eines Clusters
+    Labels und Selektoren: Organisierung und Filterung von Objekten
+    Health Checks: Liveness und Readiness Probes für Container-Gesundheit
+    
+  vektordatenbanken.txt: |
+    Vektordatenbanken und Similarity Search
+    
+    Vektordatenbanken sind spezialisierte Datenbanksysteme zur effizienten Speicherung und
+    Suche von hochdimensionalen Vektoren. Sie sind essenziell für moderne KI-Anwendungen,
+    insbesondere für Retrieval-Augmented Generation (RAG) und semantische Suche.
+    
+    Hauptkonzepte:
+    - Embedding: Transformation von Text, Bildern oder anderen Daten in numerische Vektoren
+    - Dimensionalität: Anzahl der Werte im Vektor (z.B. 384, 768, 1536)
+    - Similarity Metrics: Methoden zur Berechnung von Ähnlichkeit zwischen Vektoren
+      * Cosine Similarity: Winkel zwischen Vektoren
+      * Euclidean Distance: Direkte Distanz im Vektorraum
+      * Dot Product: Skalarprodukt der Vektoren
+    
+    FAISS (Facebook AI Similarity Search):
+    - Hochperformante Bibliothek von Meta AI
+    - Unterstützt CPU und GPU
+    - Verschiedene Indextypen: Flat (exakt), IVF (geclustert), HNSW (graph-basiert)
+    - Ideal für Millionen bis Milliarden von Vektoren
+    
+    Beispiel-Workflow:
+    1. Texte in Embeddings umwandeln (SentenceTransformer)
+    2. Index erstellen und Vektoren hinzufügen
+    3. Query-Vektor generieren
+    4. K-nächste Nachbarn suchen (k-NN)
+    5. Relevante Dokumente zurückgeben
+    
+    Alternative Vektordatenbanken:
+    - Pinecone: Managed Cloud-Service
+    - Weaviate: Open-Source mit GraphQL
+    - Milvus: Distributed Vector Database
+    - Qdrant: Rust-basiert, schnell und speichereffizient
+    - Chroma: Eingebettet, Python-nativ
+    
+    Caching: Indizes können persistiert werden, um Startup-Zeit zu reduzieren
+    
+  embeddings.txt: |
+    Embeddings und Sentence Transformers
+    
+    Embeddings sind numerische Repräsentationen von Text, Bildern oder anderen Daten in einem
+    hochdimensionalen Vektorraum. Sie ermöglichen es Maschinen, semantische Bedeutungen zu
+    verstehen und zu vergleichen.
+    
+    Sentence Transformers:
+    - Basiert auf BERT-Architektur (Bidirectional Encoder Representations from Transformers)
+    - Optimiert für Satz- und Paragraph-Embeddings
+    - Bibliothek: sentence-transformers (Python)
+    
+    Beliebte Modelle:
+    - all-MiniLM-L6-v2: Kompakt (384 Dimensionen), schnell, gute Balance
+    - all-mpnet-base-v2: Höhere Qualität (768 Dimensionen), langsamer
+    - paraphrase-multilingual: Unterstützt 50+ Sprachen
+    - e5-large: Neuere Modelle mit besserer Performance
+    
+    Verwendung:
+    from sentence_transformers import SentenceTransformer
+    
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    
+    # Einzelner Text
+    embedding = model.encode("Dies ist ein Beispielsatz.")
+    
+    # Mehrere Texte (Batch)
+    texts = ["Text 1", "Text 2", "Text 3"]
+    embeddings = model.encode(texts)
+    
+    # Ähnlichkeit berechnen
+    from sklearn.metrics.pairwise import cosine_similarity
+    similarity = cosine_similarity([embedding1], [embedding2])[0][0]
+    
+    Eigenschaften:
+    - Semantische Ähnlichkeit: "Auto" und "Fahrzeug" haben ähnliche Embeddings
+    - Kontextabhängig: "Bank" (Finanzinstitut) vs "Bank" (Sitzgelegenheit)
+    - Dimensionsreduktion: Von tausenden Wörtern auf wenige hundert Zahlen
+    
+    Fine-Tuning: Modelle können auf domänenspezifische Daten angepasst werden
+    
+    Herausforderungen:
+    - Model Size: Größere Modelle brauchen mehr Speicher und Rechenzeit
+    - Cache: Modelle werden lokal gecacht (~100-500 MB pro Modell)
+    - Cold Start: Erstes Laden kann 5-30 Sekunden dauern
+    
+  rag.txt: |
+    Retrieval-Augmented Generation (RAG)
+    
+    RAG ist eine Technik, die Informationsabruf (Retrieval) mit Text-Generierung kombiniert,
+    um LLMs (Large Language Models) mit aktuellem, domänenspezifischem Wissen zu erweitern.
+    
+    Workflow:
+    1. Indexierung:
+       - Dokumente in Chunks aufteilen
+       - Embeddings für jeden Chunk generieren
+       - In Vektordatenbank speichern
+    
+    2. Retrieval:
+       - User-Frage in Embedding umwandeln
+       - Ähnlichste Chunks aus Datenbank abrufen (k-NN)
+       - Relevanz-Scoring und Filterung
+    
+    3. Augmentation:
+       - Abgerufene Chunks als Kontext zusammenstellen
+       - Mit User-Frage kombinieren
+    
+    4. Generation:
+       - Prompt an LLM senden (z.B. Mistral, GPT-4, Claude)
+       - LLM generiert Antwort basierend auf Kontext
+       - Antwort zurück an User
+    
+    Vorteile gegenüber reinem LLM:
+    - Aktuelle Informationen (keine Cutoff-Date-Limitierung)
+    - Domänenspezifisches Wissen
+    - Quellenverweis möglich
+    - Reduzierte Halluzinationen
+    - Kleinere Modelle ausreichend
+    
+    Implementierung mit Ollama:
+    - Ollama: Lokales LLM-Hosting (Mistral, Llama, etc.)
+    - API-Endpunkt: /api/generate oder /api/chat
+    - Context Window: Typisch 4k-32k Tokens
+    
+    Prompt-Engineering für RAG:
+    """
+    Kontext:
+    {retrieved_chunks}
+    
+    Frage: {user_question}
+    
+    Anleitung: Beantworte die Frage ausschließlich basierend auf dem gegebenen Kontext.
+    Wenn die Antwort nicht im Kontext enthalten ist, sage das explizit.
+    """
+    
+    Optimierungen:
+    - Chunk-Größe: 200-500 Tokens optimal
+    - Overlap: 10-20% zwischen Chunks
+    - Top-K: 3-5 relevanteste Chunks
+    - Reranking: Zweite Filterung für bessere Relevanz
+    - Hybrid Search: Kombination aus Vektor- und Keyword-Suche
+    
+    Evaluation:
+    - Precision: Wie viele abgerufene Chunks sind relevant?
+    - Recall: Wie viele relevante Chunks wurden gefunden?
+    - Answer Quality: Ist die generierte Antwort korrekt und vollständig?
+    
+    Tools und Frameworks:
+    - LangChain: Framework für LLM-Anwendungen
+    - LlamaIndex: Spezialisiert auf Indexierung und Retrieval
+    - Haystack: End-to-End NLP Framework

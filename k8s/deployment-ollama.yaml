@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: uni-assistent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      initContainers:
+        - name: pull-mistral
+          image: ollama/ollama:0.3.12
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "[INIT] Starte Ollama-Server im Hintergrund..."
+              ollama serve &
+              OLLAMA_PID=$!
+              
+              echo "[INIT] Warte auf Ollama-Server..."
+              for i in $(seq 1 30); do
+                if ollama list >/dev/null 2>&1; then
+                  echo "[INIT] Ollama-Server bereit."
+                  break
+                fi
+                sleep 2
+              done
+              
+              echo "[INIT] Prüfe ob Mistral-Modell verfügbar ist..."
+              if ollama list | grep -q "mistral"; then
+                echo "[INIT] Mistral-Modell bereits vorhanden."
+              else
+                echo "[INIT] Lade Mistral-Modell herunter (ca. 4.4 GB)..."
+                ollama pull mistral
+                echo "[INIT] Mistral-Modell erfolgreich geladen."
+              fi
+              
+              kill $OLLAMA_PID 2>/dev/null || true
+              echo "[INIT] Init-Container abgeschlossen."
+          env:
+            - name: OLLAMA_MODELS
+              value: /models
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /models
+            - name: ollama-config
+              mountPath: /.ollama
+          resources:
+            requests:
+              cpu: "1"
+              memory: "8Gi"
+            limits:
+              cpu: "2"
+              memory: "16Gi"
+      containers:
+        - name: ollama
+          image: ollama/ollama:0.3.12
+          ports:
+            - containerPort: 11434
+          env:
+            - name: OLLAMA_MODELS
+              value: /models
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /models
+            - name: ollama-config
+              mountPath: /.ollama
+          resources:
+            requests:
+              cpu: "2"
+              memory: "12Gi"
+            limits:
+              cpu: "4"
+              memory: "32Gi"
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: 11434
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/tags
+              port: 11434
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: ollama-data
+          emptyDir: {}
+        - name: ollama-config
+          emptyDir: {}

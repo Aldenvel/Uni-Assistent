@@ -1,31 +1,88 @@
-version: '3.8'
-
 services:
   web:
     build: .
     ports:
       - "5000:5000"
+    healthcheck:
+      # Nutzt Python stdlib, um HTTP-GET auf /healthz auszuführen (kein curl nötig)
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://127.0.0.1:5000/healthz'); sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    read_only: true  # Root-Filesystem im Container read-only
+    tmpfs:
+      - /tmp:rw,size=64m  # Flüchtiger Speicher für temporäre Dateien
     volumes:
-      # Daten-Persistenz: Montiere Data-Ordner als Volume
-      - ./data:/app/data
-      # Uni-Ordner für Dokumente (nur Lesezugriff)
-      - "C:\\Users\\veljk\\Desktop\\Uni:/app/Uni:ro"
+      # Persistente App-Daten (CSV, Cache) – explizit beschreibbar
+      - type: bind
+        source: ./data
+        target: /app/data
+        read_only: false
+      # Uni-Dokumente nur lesend
+      - type: bind
+        source: C:\Users\veljk\Desktop\Uni
+        target: /app/Uni
+        read_only: true
     environment:
       - FLASK_APP=app.py
-      # Setze auf 'production' in echter Produktivumgebung
-      - FLASK_ENV=development
-      - OLLAMA_HOST=ollama
+      - FLASK_ENV=production
+      - OLLAMA_HOST=http://ollama:11434
     depends_on:
       - ollama
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Ressourcenbegrenzung (Compose v2: deploy ignoriert im klassischen Docker, eher für Swarm/K8s – hier dokumentarisch)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:0.3.12
     ports:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+      - ./check_and_pull_model.sh:/scripts/check_and_pull_model.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "[STARTUP] Starte Ollama-Server..."
+        ollama serve &
+        OLLAMA_PID=$$!
+        
+        echo "[STARTUP] Warte auf Ollama-Server..."
+        for i in $(seq 1 30); do
+          if ollama list >/dev/null 2>&1; then
+            echo "[STARTUP] Ollama-Server bereit."
+            break
+          fi
+          sleep 2
+        done
+        
+        echo "[STARTUP] Prüfe ob Mistral-Modell verfügbar ist..."
+        if ollama list | grep -q "mistral"; then
+          echo "[STARTUP] Mistral-Modell bereits vorhanden."
+        else
+          echo "[STARTUP] Lade Mistral-Modell herunter (ca. 4.4 GB)..."
+          ollama pull mistral
+          echo "[STARTUP] Mistral-Modell erfolgreich geladen."
+        fi
+        
+        echo "[STARTUP] Bereit. Halte Container am Leben..."
+        wait $$OLLAMA_PID
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
 
 volumes:
   ollama_data:

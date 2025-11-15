@@ -7,32 +7,44 @@
 <body>
     <h1>Frage stellen – Fach: {{ fach }}</h1>
 
-    <form method="POST">
+    <form id="frage-form" method="POST" novalidate>
         <label for="frage">Was möchtest du wissen?</label><br>
-        <textarea id="frage" name="frage" rows="4" cols="60" required></textarea><br><br>
-        <button type="submit">Frage senden</button>
+        <textarea id="frage" name="frage" rows="4" cols="60" required aria-required="true"></textarea><br><br>
+        <button id="senden-btn" type="submit">Frage senden</button>
     </form>
 
-    {% if antwort is not none %}
+    <!-- Barrierefreies Lade-Overlay (WCAG 2.2 AA) -->
+    <div id="loading-overlay" hidden aria-hidden="true">
+        <div id="loading-dialog" role="dialog" aria-modal="true" aria-labelledby="loading-title" aria-describedby="loading-desc">
+            <h2 id="loading-title">Wird verarbeitet …</h2>
+            <p id="loading-desc">Deine Frage wird beantwortet. Dies kann bis zu 5 Minuten dauern.</p>
+            
+            <!-- Indeterminate Spinner für langes Warten -->
+            <div id="spinner" role="status" aria-live="polite" aria-label="Bitte warten">
+                <div class="spinner-circle"></div>
+                <span class="sr-only">Bitte warten …</span>
+            </div>
+            
+            <div role="progressbar" id="progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite" aria-label="Fortschritt" tabindex="0">
+                <div id="progress-bar"></div>
+            </div>
+            <button id="abbrechen-btn" type="button">Abbrechen</button>
+        </div>
+    </div>
+
+    <!-- Status-Ausgabe für Screenreader -->
+    <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
+
+    <section id="antwort-section" hidden>
         <hr>
         <h2>Antwort</h2>
-        <p>{{ antwort }}</p>
+        <p id="antwort-text"></p>
 
-        {% if quellen %}
-            <section aria-labelledby="quellen-label">
-                <h3 id="quellen-label">Verwendete Quellen</h3>
-                <ul>
-                    {% for pfad in quellen %}
-                        <li>
-                            <a href="file://{{ pfad | replace('\\', '/') }}" target="_blank">
-                                {{ pfad.split('/')[-1] }}
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </section>
-        {% endif %}
-    {% endif %}
+        <section id="quellen-section" aria-labelledby="quellen-label" hidden>
+            <h3 id="quellen-label">Verwendete Quellen</h3>
+            <ul id="quellen-liste"></ul>
+        </section>
+    </section>
 
     {% if antwort is none and request.method == 'POST' %}
         <p id="ladeanzeige" role="status" aria-live="polite" style="color:blue;">
@@ -48,5 +60,152 @@
     <a href="{{ url_for('cache_verwaltung', fach=fach) }}">Cache-Verwaltung für {{ fach }}</a>
 </p>
 
+    <style>
+      /* Visuell klarer Progressbar mit ausreichendem Kontrast */
+      #loading-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+        display: flex; align-items: center; justify-content: center;
+      }
+      #loading-dialog { background: #fff; padding: 1.5rem; max-width: 520px; width: 92%; border-radius: 8px; box-shadow: 0 2px 16px rgba(0,0,0,0.2); text-align: center; }
+      
+      /* Indeterminate Spinner (WCAG konform) */
+      #spinner { margin: 1rem auto; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+      .spinner-circle {
+        width: 48px; height: 48px; border: 4px solid #e0e0e0; border-top-color: #005a9e;
+        border-radius: 50%; animation: spin 1s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      
+      #progress { height: 20px; background: #eee; border-radius: 10px; overflow: hidden; outline: none; margin: 1rem 0; }
+      #progress-bar { height: 100%; width: 0%; background: #005a9e; transition: width 0.2s ease; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,1px,1px); border: 0; }
+    </style>        <script>
+            (function(){
+                const form = document.getElementById('frage-form');
+                const sendenBtn = document.getElementById('senden-btn');
+                const overlay = document.getElementById('loading-overlay');
+                const dialog = document.getElementById('loading-dialog');
+                const progress = document.getElementById('progress');
+                const bar = document.getElementById('progress-bar');
+                const sr = document.getElementById('sr-status');
+                const abbrechenBtn = document.getElementById('abbrechen-btn');
+                const antwortSection = document.getElementById('antwort-section');
+                const antwortText = document.getElementById('antwort-text');
+                const quellenSection = document.getElementById('quellen-section');
+                const quellenListe = document.getElementById('quellen-liste');
+
+                let abortCtrl = null;
+                let timer = null;
+
+                function showOverlay(){
+                    overlay.hidden = false; overlay.setAttribute('aria-hidden','false');
+                    // Fokus ins Dialog setzen (Fokus-Management)
+                    dialog.focus();
+                    // Progress animieren (indeterminate Simulation bis 90%)
+                    let value = 0;
+                    progress.setAttribute('aria-valuenow', String(value));
+                    bar.style.width = value + '%';
+                    sr.textContent = 'Verarbeitung gestartet';
+                    timer = setInterval(()=>{
+                        value = Math.min(90, value + 3);
+                        progress.setAttribute('aria-valuenow', String(value));
+                        bar.style.width = value + '%';
+                    }, 400);
+                }
+
+                function hideOverlay(success){
+                    if(timer){ clearInterval(timer); timer = null; }
+                    // Falls erfolgreich, auf 100% vollenden
+                    if(success){
+                        progress.setAttribute('aria-valuenow','100');
+                        bar.style.width = '100%';
+                    }
+                    setTimeout(()=>{ overlay.hidden = true; overlay.setAttribute('aria-hidden','true'); }, success ? 350 : 0);
+                }
+
+                abbrechenBtn.addEventListener('click', ()=>{
+                    if(abortCtrl){ abortCtrl.abort(); }
+                    sr.textContent = 'Vorgang abgebrochen';
+                    hideOverlay(false);
+                });
+
+                form.addEventListener('submit', async (e)=>{
+                    e.preventDefault();
+                    const frage = (document.getElementById('frage').value || '').trim();
+                    if(!frage){
+                        sr.textContent = 'Bitte eine Frage eingeben';
+                        document.getElementById('frage').focus();
+                        return;
+                    }
+
+                    // UI sperren und Overlay zeigen
+                    sendenBtn.disabled = true;
+                    showOverlay();
+
+                    // Anfrage an API
+                    abortCtrl = new AbortController();
+                    const signal = abortCtrl.signal;
+
+                    try{
+                        // 5 Minuten Timeout für Mistral
+                        const timeoutId = setTimeout(() => abortCtrl.abort(), 300000);
+                        const res = await fetch(`${window.location.origin}/api/frage/{{ fach }}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ frage }),
+                            signal
+                        });
+                        clearTimeout(timeoutId);
+                        if(!res.ok){
+                            const text = await res.text();
+                            throw new Error('Serverfehler: ' + text);
+                        }
+                        const data = await res.json();
+                        // Ergebnis einblenden
+                        if(antwortSection) antwortSection.hidden = false;
+                        if(antwortText){
+                            if(data.answer){
+                                antwortText.textContent = data.answer;
+                            } else {
+                                antwortText.textContent = 'Keine fundierte Antwort möglich.';
+                            }
+                        }
+                        // Quellen
+                        if(quellenSection && quellenListe){
+                            if(Array.isArray(data.sources) && data.sources.length){
+                                quellenSection.hidden = false;
+                                quellenListe.innerHTML = '';
+                                data.sources.forEach(p=>{
+                                    const li = document.createElement('li');
+                                    const a = document.createElement('a');
+                                    a.href = 'file://' + String(p).replaceAll('\\\\','/');
+                                    a.target = '_blank';
+                                    a.textContent = p.split('/').pop();
+                                    li.appendChild(a);
+                                    quellenListe.appendChild(li);
+                                });
+                            } else {
+                                quellenSection.hidden = true;
+                            }
+                        }
+                        sr.textContent = 'Antwort bereit';
+                        hideOverlay(true);
+                    } catch(err){
+                        if(err.name === 'AbortError') return;
+                        console.error(err);
+                        sr.textContent = 'Fehler beim Abruf: ' + err.message;
+                        hideOverlay(false);
+                    } finally {
+                        sendenBtn.disabled = false;
+                        // Fokus auf Antwort-Überschrift für Screenreader
+                        const antwortH2 = antwortSection ? antwortSection.querySelector('h2') : null;
+                        if(antwortH2){
+                            antwortH2.setAttribute('tabindex','-1');
+                            antwortH2.focus();
+                        }
+                    }
+                });
+            })();
+        </script>
 </body>
 </html>

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Git
+.git/
+.gitignore
+
+# IDE/Editor
+.vscode/
+.idea/
+
+# Data (wird als Volume gemountet, daher nicht ins Image)
+data/
+
+# Sonstiges
+.DS_Store

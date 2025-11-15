@@ -20,6 +20,11 @@ import json
 app = Flask(__name__)
 app.config["BASIS_ORDNER"] = lade_benutzerpfad()
 
+# Healthcheck-Endpoint für Orchestrierung (Docker/Kubernetes)
+@app.route("/healthz")
+def healthz():
+    return jsonify({"status": "ok"}), 200
+
 # Weiterleitung zur Einrichtung, falls kein Ordner gewählt wurde
 @app.before_request
 def weiterleitung_wenn_keine_einstellung():
@@ -203,9 +208,54 @@ def frage_stellen(fach):
 
         # 🔹 Nutzung der neuen RAG-Funktion mit Quellen
         from core.rag_engine import frage_beantworten_mit_quellen
+        print(f"[DEBUG] Frage empfangen: {frage}", flush=True)
+        print(f"[DEBUG] Starte RAG-Pipeline...", flush=True)
         antwort, quellen = frage_beantworten_mit_quellen(frage, texte, fach)
+        print(f"[DEBUG] Antwort generiert: {antwort[:100]}...", flush=True)
 
     return render_template("frage.html", fach=fach, antwort=antwort, quellen=quellen)
+
+# --- API ENDPOINTS (Kubernetes-Anforderung: nur API nötig) ---
+@app.route("/api/frage/<fach>", methods=["POST"])
+def api_frage(fach):
+    """JSON API: Frage stellen mit RAG. Body: {"frage": "..."}"""
+    data = request.get_json(silent=True) or {}
+    frage = data.get("frage", "").strip()
+    if not frage:
+        return jsonify({"error": "Frage fehlt"}), 400
+    pfad = os.path.join(app.config["BASIS_ORDNER"], fach)
+    texte = lade_dokumente_aus_ordner(pfad)
+    # Erweiterte Variante mit Quellen für bessere Transparenz
+    from core.rag_engine import frage_beantworten_mit_quellen, STANDARD_KEINE_INFO
+    try:
+        antwort, quellen = frage_beantworten_mit_quellen(frage, texte, fach)
+    except Exception as e:
+        # Bei Fehler: Standardantwort statt Fehlercode
+        print(f"[ERROR] Exception in api_frage: {e}", flush=True)
+        return jsonify({"answer": STANDARD_KEINE_INFO, "sources": [], "fallback": True})
+    
+    # Prüfe ob Standardantwort zurückgegeben wurde
+    if not antwort or antwort == STANDARD_KEINE_INFO or antwort.startswith("Diese Frage kann ich nicht beantworten"):
+        return jsonify({"answer": STANDARD_KEINE_INFO, "sources": [], "fallback": True})
+    
+    return jsonify({"answer": antwort, "sources": quellen, "fallback": False})
+
+@app.route("/api/zusammenfassung/<fach>", methods=["POST"])
+def api_zusammenfassung(fach):
+    """Erzeugt eine knappe Zusammenfassung aller Dokumente in einem Fach."""
+    pfad = os.path.join(app.config["BASIS_ORDNER"], fach)
+    texte = lade_dokumente_aus_ordner(pfad)
+    if not texte:
+        return jsonify({"summary": None, "fallback": True, "reason": "Keine Dokumente"})
+    # Begrenze Kontext (nur erste N Absätze)
+    kontext = []
+    for t in texte[:8]:
+        kontext.append(t["text"][:1200])
+    prompt_frage = "Fasse den bereitgestellten Inhalt prägnant in 4–6 Sätzen zusammen ohne neue Fakten zu erfinden." 
+    zusammenfassung = frage_an_modell_stellen(prompt_frage, kontext)
+    if not zusammenfassung or zusammenfassung.lower().startswith("diese frage kann"):
+        return jsonify({"summary": None, "fallback": True})
+    return jsonify({"summary": zusammenfassung, "fallback": False})
 
 
 @app.route("/editor/<fach>", methods=["GET", "POST"])
